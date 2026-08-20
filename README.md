@@ -51,3 +51,4 @@ next time you open the app.
 
 If no API key is configured, the app shows setup instructions directly on
 screen instead of a raw error.
+# flight-status-app
