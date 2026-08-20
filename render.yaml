@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: flight-status
+    env: python
+    plan: free
+    buildCommand: "true"
+    startCommand: "python3 server.py"
+    envVars:
+      - key: AERODATABOX_API_KEY
+        sync: false

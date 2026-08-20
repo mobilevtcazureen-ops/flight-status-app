@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Flight Status</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <div class="hero-icon" aria-hidden="true">&#9992;</div>
+      <h1>Flight Status</h1>
+      <p class="hero-sub">Enter a flight number to see its live status</p>
+    </header>
+
+    <form id="search-form" class="search" autocomplete="off">
+      <input
+        id="flight-input"
+        name="flight"
+        type="text"
+        inputmode="text"
+        placeholder="e.g. AA1780, UA2419, DL283"
+        aria-label="Flight number"
+        autofocus
+        maxlength="8"
+      >
+      <button type="submit" id="search-btn">Search</button>
+    </form>
+
+    <section id="result" class="result" aria-live="polite"></section>
+  </main>
+
+  <template id="tpl-card">
+    <article class="card">
+      <div class="card-top">
+        <div>
+          <div class="flight-number"></div>
+          <div class="airline"></div>
+        </div>
+        <span class="badge"></span>
+      </div>
+
+      <div class="route">
+        <div class="stop stop-dep">
+          <div class="stop-code"></div>
+          <div class="stop-city"></div>
+          <div class="stop-time">
+            <span class="time-scheduled"></span>
+            <span class="time-revised"></span>
+          </div>
+          <div class="stop-meta">
+            <span class="stop-terminal"></span>
+            <span class="stop-gate"></span>
+          </div>
+        </div>
+
+        <div class="route-line" aria-hidden="true">
+          <div class="route-progress"></div>
+          <div class="plane">&#9992;</div>
+        </div>
+
+        <div class="stop stop-arr">
+          <div class="stop-code"></div>
+          <div class="stop-city"></div>
+          <div class="stop-time">
+            <span class="time-scheduled"></span>
+            <span class="time-revised"></span>
+          </div>
+          <div class="stop-meta">
+            <span class="stop-terminal"></span>
+            <span class="stop-gate"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="directions">
+        <button type="button" class="directions-btn">&#128205; Travel time to the airport</button>
+        <div class="directions-result"></div>
+      </div>
+
+      <div class="card-footer">
+        <div class="aircraft-info">
+          <span class="aircraft-model"></span>
+          <span class="aircraft-reg"></span>
+        </div>
+        <button type="button" class="refresh-btn" aria-label="Refresh">&#8635; Refresh</button>
+      </div>
+    </article>
+  </template>
+
+  <script src="/app.js"></script>
+</body>
+</html>
