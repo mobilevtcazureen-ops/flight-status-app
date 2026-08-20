@@ -240,7 +240,6 @@ function renderFlights(flights, flightNumber) {
 
     fillStop(node.querySelector(".stop-dep"), flight.departure, "departure");
     fillStop(node.querySelector(".stop-arr"), flight.arrival, "arrival");
-    setupDirections(node, node.querySelector(".directions-dep"), flight.departure, "departure", flight);
     setupDirections(node, node.querySelector(".directions-arr"), flight.arrival, "arrival", flight);
     animateFlightPath(node, flight);
 
