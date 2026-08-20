@@ -227,6 +227,32 @@ function setupDirections(node, itemEl, stop, kind, flight) {
   });
 }
 
+function pickMostRelevantFlight(flights) {
+  if (flights.length <= 1) return flights[0] || null;
+
+  const now = Date.now();
+  let best = flights[0];
+  let bestDiff = Infinity;
+
+  for (const f of flights) {
+    const depIso = f.departure && (f.departure.revisedTime || f.departure.scheduledTime);
+    if (!depIso) continue;
+    const depTime = new Date(depIso).getTime();
+    const arrIso = f.arrival && (f.arrival.revisedTime || f.arrival.scheduledTime);
+    const arrTime = arrIso ? new Date(arrIso).getTime() : depTime;
+
+    // A flight currently in the air is always the one you're looking for.
+    if (depTime <= now && now <= arrTime) return f;
+
+    const diff = Math.min(Math.abs(depTime - now), Math.abs(arrTime - now));
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      best = f;
+    }
+  }
+  return best;
+}
+
 function renderFlights(flights, flightNumber) {
   result.innerHTML = "";
   flights.forEach((flight) => {
@@ -271,7 +297,8 @@ async function search(flightNumber) {
     } else if (!data.flights || data.flights.length === 0) {
       showError(`No flight found for ${flightNumber}.`);
     } else {
-      renderFlights(data.flights, flightNumber);
+      const flight = pickMostRelevantFlight(data.flights);
+      renderFlights([flight], flightNumber);
     }
   } catch (err) {
     showError("Couldn't reach the server. Make sure it's running.");
