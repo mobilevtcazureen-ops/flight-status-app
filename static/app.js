@@ -145,14 +145,18 @@ function animateFlightPath(node, flight) {
   plane.classList.toggle("in-flight", isLive);
 }
 
-function setupDirections(node, departure) {
-  const btn = node.querySelector(".directions-btn");
-  const out = node.querySelector(".directions-result");
+function setupDirections(node, itemEl, stop, kind, flight) {
+  const btn = itemEl.querySelector(".directions-btn");
+  const out = itemEl.querySelector(".directions-result");
 
-  if (!departure || !departure.icao) {
-    btn.remove();
+  if (!stop || !stop.icao) {
+    itemEl.remove();
     return;
   }
+
+  const airportLabel = stop.iata || stop.icao;
+  const defaultLabel = `📍 Travel time to ${airportLabel}`;
+  btn.textContent = defaultLabel;
 
   btn.addEventListener("click", () => {
     if (!("geolocation" in navigator)) {
@@ -171,7 +175,7 @@ function setupDirections(node, departure) {
         const { latitude, longitude } = position.coords;
         try {
           const res = await fetch(
-            `/api/travel-time?icao=${encodeURIComponent(departure.icao)}&lat=${latitude}&lon=${longitude}`
+            `/api/travel-time?icao=${encodeURIComponent(stop.icao)}&lat=${latitude}&lon=${longitude}`
           );
           const data = await res.json();
           if (data.error) {
@@ -180,18 +184,34 @@ function setupDirections(node, departure) {
           } else {
             const eta = new Date(Date.now() + data.durationSeconds * 1000);
             const etaText = eta.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-            const terminalText = departure.terminal ? ` (Terminal ${departure.terminal})` : "";
+            const terminalText = stop.terminal ? ` (Terminal ${stop.terminal})` : "";
             out.classList.remove("is-error");
-            out.innerHTML =
-              `&#128663; ${formatDuration(data.durationSeconds)} drive to ${departure.iata || departure.icao}${terminalText}.` +
+            let html =
+              `&#128663; ${formatDuration(data.durationSeconds)} drive to ${airportLabel}${terminalText}.` +
               ` Leave now and arrive by <span class="eta">${etaText}</span>.`;
+
+            if (kind === "arrival") {
+              const landing = new Date(stop.revisedTime || stop.scheduledTime);
+              if (!isNaN(landing)) {
+                const spareSeconds = Math.round((landing - eta) / 1000);
+                const spareText = formatDuration(Math.abs(spareSeconds));
+                const landingText = landing.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+                if (spareSeconds >= 0) {
+                  html += ` That's <span class="spare-ok">${spareText} before</span> the flight lands at ${landingText}.`;
+                } else {
+                  html += ` That's <span class="spare-late">${spareText} after</span> the flight lands at ${landingText}.`;
+                }
+              }
+            }
+
+            out.innerHTML = html;
           }
         } catch (err) {
           out.classList.add("is-error");
           out.textContent = "Couldn't reach the server for travel time.";
         } finally {
           btn.disabled = false;
-          btn.textContent = "📍 Travel time to the airport";
+          btn.textContent = defaultLabel;
         }
       },
       (err) => {
@@ -201,7 +221,7 @@ function setupDirections(node, departure) {
             ? "Location access denied. Enable it in your browser to see travel time."
             : "Couldn't determine your location.";
         btn.disabled = false;
-        btn.textContent = "📍 Travel time to the airport";
+        btn.textContent = defaultLabel;
       }
     );
   });
@@ -220,7 +240,8 @@ function renderFlights(flights, flightNumber) {
 
     fillStop(node.querySelector(".stop-dep"), flight.departure, "departure");
     fillStop(node.querySelector(".stop-arr"), flight.arrival, "arrival");
-    setupDirections(node, flight.departure);
+    setupDirections(node, node.querySelector(".directions-dep"), flight.departure, "departure", flight);
+    setupDirections(node, node.querySelector(".directions-arr"), flight.arrival, "arrival", flight);
     animateFlightPath(node, flight);
 
     node.querySelector(".aircraft-model").textContent = flight.aircraftModel || "";

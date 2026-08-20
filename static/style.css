@@ -325,7 +325,12 @@ body {
   margin-top: 20px;
   padding-top: 16px;
   border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
+
+.directions-item:empty { display: none; }
 
 .directions-btn {
   border: 1px solid var(--border);
@@ -349,6 +354,16 @@ body {
 .directions-result:empty { display: none; }
 
 .directions-result .eta {
+  font-weight: 700;
+}
+
+.directions-result .spare-ok {
+  color: var(--green-fg);
+  font-weight: 700;
+}
+
+.directions-result .spare-late {
+  color: var(--red-fg);
   font-weight: 700;
 }
 
