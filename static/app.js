@@ -113,12 +113,40 @@ function formatDuration(seconds) {
   return `${h} hr ${m} min`;
 }
 
-const LIVE_STATUSES = ["departed", "enroute", "approaching"];
-const LANDED_STATUSES = ["arrived", "landed"];
+const LANDING_WINDOW_MS = 15 * 60000; // final descent starts ~15 min before ETA
+const LANDED_GRACE_MS = 20 * 60000; // taxi-in + data lag before we trust "landed"
 
-function flightProgress(flight) {
+// Live trackers (including the upstream API) can lag reality by many minutes
+// near touchdown, so once the ETA has clearly passed we override the raw
+// status instead of leaving a stale "En Route" badge on screen.
+function deriveStatus(flight) {
   const statusKey = (flight.statusRaw || "").toLowerCase().replace(/[^a-z]/g, "");
-  if (LANDED_STATUSES.some((s) => statusKey.includes(s))) return 1;
+  const terminalStatus = ["arrived", "landed", "canceled", "cancelled", "canceleduncertain", "diverted"];
+  if (terminalStatus.some((s) => statusKey.includes(s))) {
+    const phase = statusKey.includes("divert") ? "diverted" : statusKey.includes("cancel") ? "cancelled" : "landed";
+    return { label: flight.statusLabel, color: flight.statusColor, phase };
+  }
+
+  const arr = flight.arrival;
+  const arrIso = arr && (arr.revisedTime || arr.scheduledTime);
+  const arrTime = arrIso ? new Date(arrIso).getTime() : NaN;
+  const now = Date.now();
+
+  if (!isNaN(arrTime)) {
+    if (now >= arrTime + LANDED_GRACE_MS) {
+      return { label: "Landed", color: "green", phase: "landed" };
+    }
+    if (now >= arrTime - LANDING_WINDOW_MS) {
+      return { label: "Landing", color: "teal", phase: "landing" };
+    }
+  }
+
+  const isLive = ["departed", "enroute", "approaching"].some((s) => statusKey.includes(s));
+  return { label: flight.statusLabel, color: flight.statusColor, phase: isLive ? "enroute" : "scheduled" };
+}
+
+function flightProgress(flight, phase) {
+  if (phase === "landed") return 1;
 
   const dep = flight.departure;
   const arr = flight.arrival;
@@ -133,10 +161,9 @@ function flightProgress(flight) {
   return Math.min(1, Math.max(0, fraction));
 }
 
-function animateFlightPath(node, flight) {
-  const statusKey = (flight.statusRaw || "").toLowerCase().replace(/[^a-z]/g, "");
-  const isLive = LIVE_STATUSES.some((s) => statusKey.includes(s));
-  const progress = flightProgress(flight);
+function animateFlightPath(node, flight, phase) {
+  const isLive = phase === "enroute" || phase === "landing";
+  const progress = flightProgress(flight, phase);
 
   const plane = node.querySelector(".plane");
   const bar = node.querySelector(".route-progress");
@@ -260,14 +287,15 @@ function renderFlights(flights, flightNumber) {
     node.querySelector(".flight-number").textContent = flight.number || flightNumber;
     node.querySelector(".airline").textContent = flight.airline || "";
 
+    const status = deriveStatus(flight);
     const badge = node.querySelector(".badge");
-    badge.textContent = flight.statusLabel;
-    badge.classList.add(flight.statusColor || "gray");
+    badge.textContent = status.label;
+    badge.classList.add(status.color || "gray");
 
     fillStop(node.querySelector(".stop-dep"), flight.departure, "departure");
     fillStop(node.querySelector(".stop-arr"), flight.arrival, "arrival");
     setupDirections(node, node.querySelector(".directions-arr"), flight.arrival, "arrival", flight);
-    animateFlightPath(node, flight);
+    animateFlightPath(node, flight, status.phase);
 
     node.querySelector(".aircraft-model").textContent = flight.aircraftModel || "";
     node.querySelector(".aircraft-reg").textContent = flight.aircraftReg || "";
